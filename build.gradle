@@ -26,17 +26,6 @@ sourceSets {
     test.kotlin.srcDirs = test.java.srcDirs = ["src/test/java", "src/test/kotlin"]
 }
 
-
-task javadocJar(type: Jar) {
-    classifier = 'javadoc'
-    from javadoc
-}
-
-task sourcesJar(type: Jar) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
-}
-
 dependencyCheck {
     // anything over a 5.0 is above a 'warning'
     failBuildOnCVSS = 2.0F
