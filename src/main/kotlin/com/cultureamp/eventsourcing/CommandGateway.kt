@@ -2,9 +2,10 @@ package com.cultureamp.eventsourcing
 
 import arrow.core.Either
 import arrow.core.left
+import kotlinx.coroutines.delay
 
 interface RetryStrategy {
-    fun tryRunning(fn: () -> Either<CommandError, SuccessStatus>): Either<CommandError, SuccessStatus>
+    suspend fun tryRunning(fn: suspend () -> Either<CommandError, SuccessStatus>): Either<CommandError, SuccessStatus>
 }
 
 // this mimics the default retry behaviour from earlier versions of Kestrel
@@ -12,11 +13,11 @@ class FixedTriesThreadSleep(
     private val retries: Int = 5,
     private val delayMs: Long = 500L
 ) : RetryStrategy {
-    override fun tryRunning(fn: () -> Either<CommandError, SuccessStatus>): Either<CommandError, SuccessStatus> {
+    override suspend fun tryRunning(fn: suspend () -> Either<CommandError, SuccessStatus>): Either<CommandError, SuccessStatus> {
         for (i in retries downTo 0) {
             val result = fn()
             if (result.isLeft { it is RetriableError } && i > 0) {
-                Thread.sleep(delayMs)
+                delay(delayMs)
             } else {
                 return result
             }
@@ -34,7 +35,7 @@ interface CommandGateway<M : EventMetadata> {
         ) = EventStoreCommandGateway(eventStore, *routes)
     }
 
-    fun dispatch(
+    suspend fun dispatch(
         command: Command,
         metadata: M,
         retryStrategy: RetryStrategy = FixedTriesThreadSleep()
@@ -46,14 +47,14 @@ class EventStoreCommandGateway<M : EventMetadata>(
     private val eventStore: EventStore<M>,
     private vararg val routes: Route<*, *, M>
 ) : CommandGateway<M> {
-    override fun dispatch(
+    override suspend fun dispatch(
         command: Command,
         metadata: M,
         retryStrategy: RetryStrategy
     ): Either<CommandError, SuccessStatus> =
         retryStrategy.tryRunning { createOrUpdate(command, metadata) }
 
-    private fun createOrUpdate(command: Command, metadata: M): Either<CommandError, SuccessStatus> {
+    private suspend fun createOrUpdate(command: Command, metadata: M): Either<CommandError, SuccessStatus> {
         val constructor = constructorFor(command) ?: return NoConstructorForCommand.left()
         val events = eventStore.eventsFor(command.aggregateId)
         return if (events.isEmpty()) when (command) {

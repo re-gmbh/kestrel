@@ -58,12 +58,12 @@ data class ThingAggregate(val tweaks: List<String> = emptyList(), val bops: List
         override fun aggregateType() = "thing"
     }
 
-    override fun updated(event: ThingUpdateEvent): ThingAggregate = when(event){
+    override suspend fun updated(event: ThingUpdateEvent): ThingAggregate = when(event){
         is Tweaked -> this.copy(tweaks = tweaks + event.tweak)
         is Bopped -> this.copy(bops = bops + event)
     }
 
-    override fun update(projection: ThingCommandProjection, command: ThingUpdateCommand, metadata: StandardEventMetadata): Either<ThingError, List<ThingUpdateEvent>> = when(command) {
+    override suspend fun update(projection: ThingCommandProjection, command: ThingUpdateCommand, metadata: StandardEventMetadata): Either<ThingError, List<ThingUpdateEvent>> = when(command) {
         is Tweak -> listOf(Tweaked(command.tweak)).right()
         is Bop -> when(projection.isBoppable()) {
             false -> Unboppable.left()

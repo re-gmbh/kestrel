@@ -3,10 +3,8 @@ import com.cultureamp.eventsourcing.example.*
 import com.cultureamp.eventsourcing.sample.StandardEventMetadata
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.StdOutSqlLogger
-import org.jetbrains.exposed.sql.addLogger
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import java.util.*
@@ -65,7 +63,7 @@ class UpcastTest : DescribeSpec({
             val eventProcessor = EventProcessor.from(projector)
             val asyncEventProcessor = BatchedAsyncEventProcessor(eventStore, bookmarkStore, bookmarkName, eventProcessor, upcasting = false)
 
-            transaction(db) {
+            newSuspendedTransaction(db = db) {
                 val participantId = UUID.randomUUID()
                 commandGateway.dispatch(
                     Invite(participantId, UUID.randomUUID(), UUID.randomUUID(), timestamp),
@@ -90,7 +88,7 @@ class UpcastTest : DescribeSpec({
             val eventProcessor = EventProcessor.from(projector)
             val asyncEventProcessor = BatchedAsyncEventProcessor(eventStore, bookmarkStore, bookmarkName, eventProcessor)
 
-            transaction(db) {
+            newSuspendedTransaction(db = db) {
                 val participantId = UUID.randomUUID()
                 commandGateway.dispatch(
                     Invite(participantId, UUID.randomUUID(), UUID.randomUUID(), timestamp),

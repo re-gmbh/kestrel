@@ -15,6 +15,7 @@ import com.cultureamp.eventsourcing.SimpleAggregate
 import com.cultureamp.eventsourcing.SimpleAggregateConstructor
 import com.cultureamp.eventsourcing.UpdateCommand
 import com.cultureamp.eventsourcing.UpdateEvent
+import kotlinx.coroutines.*
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.lang.RuntimeException
@@ -130,8 +131,9 @@ fun main(args: Array<String>) {
     })
 
     val startTime = System.currentTimeMillis()
-    val threads = (1..20).map {
-        thread(start = true, isDaemon = false, name = it.toString()) {
+    val context = newFixedThreadPoolContext(20, "Multithreaded Execution")
+    val jobs = (1..20).map {
+        GlobalScope.launch(context) {
             while (!stop.get()) {
                 val result = commandGateway.dispatch(CreateSimpleThing(UUID.randomUUID()), EventMetadata())
                 when (result) {
@@ -158,8 +160,8 @@ fun main(args: Array<String>) {
 
         if (stop.get()) {
             println("Waiting for remaining events...")
-            threads.forEach {
-                it.join()
+            runBlocking {
+                jobs.joinAll()
             }
             if (eventStore.getAfter(bookmark).isEmpty()) {
                 break
